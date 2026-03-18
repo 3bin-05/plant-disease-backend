@@ -1,0 +1,10 @@
+{
+  "Late Blight": {
+    "description": "Late blight is a serious fungal disease that affects leaves and stems, causing dark lesions and rapid decay.",
+    "solution": "Remove infected leaves and apply appropriate fungicides. Ensure proper air circulation."
+  },
+  "Healthy Leaf": {
+    "description": "The plant appears healthy with no visible signs of disease.",
+    "solution": "No action needed. Continue regular care."
+  }
+}
