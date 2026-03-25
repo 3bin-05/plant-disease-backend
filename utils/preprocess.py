@@ -1,9 +1,11 @@
-from tensorflow.keras.preprocessing import image
 import numpy as np
+from PIL import Image
 
-def preprocess_image(img_path):
-    img = image.load_img(img_path, target_size=(28, 28))  # model input size
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = img_array / 255.0  # normalize
-    return img_array
+def preprocess_image(image, target_size=(224, 224)):
+    """
+    Resize and normalize the image for model prediction
+    """
+    image = image.resize(target_size)
+    image = np.array(image) / 255.0  # Normalize
+    image = np.expand_dims(image, axis=0)  # Add batch dimension
+    return image

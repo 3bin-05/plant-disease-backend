@@ -1,97 +1,123 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from PIL import Image
 import os
-import numpy as np
-import json
 
-import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.initializers import GlorotUniform
+from config import Config
+from utils.predict import predict_disease
+from utils.ai_helper import get_disease_info
 
-from utils.preprocess import preprocess_image
-
+# Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-UPLOAD_FOLDER = "uploads"
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Configure upload folder
+app.config["UPLOAD_FOLDER"] = Config.UPLOAD_FOLDER
 
-# ✅ Load model (FIXED)
-model = load_model(
-    "model/model.h5",
-    custom_objects={"GlorotUniform": GlorotUniform},
-    compile=False
-)
+# Ensure upload folder exists
+os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
-# ✅ Load disease info
-with open("data/disease_info.json") as f:
-    disease_info = json.load(f)
-
-# ⚠️ IMPORTANT: Update these labels based on your model
-class_labels = [
-    "Healthy Leaf",
-    "Bacterial Spot",
-    "Early Blight",
-    "Late Blight",
-    "Leaf Mold",
-    "Septoria Leaf Spot",
-    "Spider Mites",
-    "Target Spot",
-    "Yellow Leaf Curl Virus",
-    "Mosaic Virus"
-]
 
 @app.route("/")
 def home():
-    return "Plant Disease Detection API Running 🚀"
+    """
+    Health check route
+    """
+    return {"message": "🌿 Plant Disease Detection API Running"}
+
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"})
+    """
+    Main prediction endpoint
+    """
 
-    file = request.files['file']
+    # Check if file is present
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
 
-    if file.filename == "":
-        return jsonify({"error": "Empty filename"})
+    file = request.files["file"]
 
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    # Save file temporarily
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
     file.save(filepath)
 
     try:
-        # Preprocess
-        img = preprocess_image(filepath)
+        # Open image
+        image = Image.open(filepath).convert("RGB")
 
-        # Predict
-        prediction = model.predict(img)
-        predicted_index = int(np.argmax(prediction))
-        confidence = float(np.max(prediction))
+        # Predict disease
+        label, confidence = predict_disease(image)
 
-        # 🔥 DEBUG (VERY IMPORTANT)
-        print("Prediction shape:", prediction.shape)
-        print("Predicted index:", predicted_index)
+        # =========================
+        # 🧠 CONFIDENCE CHECK (NEW 🔥)
+        # =========================
+        if confidence < 0.7:
+            return jsonify({
+                "disease": "Unknown",
+                "confidence": f"{round(confidence * 100, 2)}%",
+                "description": "The model is not confident enough to determine the disease.",
+                "causes": [],
+                "remedies": []
+            })
 
-        # ✅ SAFE LABEL HANDLING
-        if predicted_index < len(class_labels):
-            label = class_labels[predicted_index]
+        # =========================
+        # 🧠 CLEAN LABEL PROPERLY
+        # =========================
+        parts = label.split("___")
+
+        if len(parts) == 2:
+            plant, disease = parts
+            disease_name = f"{plant} {disease}".replace("_", " ").strip()
         else:
-            label = f"Class {predicted_index}"
+            disease_name = label.replace("_", " ").strip()
 
-        # Get disease info
-        info = disease_info.get(label, {
-            "description": "No info available",
-            "solution": "Consult expert"
-        })
+        # =========================
+        # 🚫 INVALID LABEL FILTER
+        # =========================
+        if "plantvillage" in label.lower():
+            return jsonify({
+                "disease": "Unknown",
+                "confidence": f"{round(confidence * 100, 2)}%",
+                "description": "no description available.",
+                "causes": [],
+                "remedies": []
+            })
 
-        return jsonify({
-            "prediction": label,
-            "confidence": f"{confidence * 100:.2f}%",
-            "description": info["description"],
-            "solution": info["solution"]
-        })
+        # =========================
+        # 🌿 HEALTHY CHECK
+        # =========================
+        if "healthy" in label.lower():
+            response = {
+                "disease": disease_name,
+                "confidence": f"{round(confidence * 100, 2)}%",
+                "description": "The plant appears healthy with no visible disease symptoms.",
+                "causes": [],
+                "remedies": []
+            }
+
+        else:
+            # 🤖 Call LLM ONLY if diseased
+            disease_info = get_disease_info(disease_name)
+
+            response = {
+                "disease": disease_name,
+                "confidence": f"{round(confidence * 100, 2)}%",
+                "description": disease_info.get("description", "No description available."),
+                "causes": disease_info.get("causes", []),
+                "remedies": disease_info.get("remedies", [])
+            }
+
+        return jsonify(response)
 
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        # 🧹 Clean up uploaded file
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
