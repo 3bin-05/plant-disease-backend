@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: plant-disease-backend
+    env: python
+    plan: free
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --timeout 120
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.13
+
+      - key: OPENAI_API_KEY
+        sync: false
+
+      - key: OPENROUTER_API_KEY
+        sync: false
