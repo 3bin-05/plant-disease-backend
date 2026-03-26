@@ -1,0 +1,16 @@
+OpenAI: 429
+{
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+OpenRouter: 200
+
+         
+
+         
+{"id":"gen-1774535520-fdXSKMap3kU0x2898LbT","object":"chat.completion","created":1774535520,"model":"openai/gpt-4o-mini","provider":"OpenAI","system_fingerprint":"fp_e738e3044b","choices":[{"index":0,"logprobs":null,"finish_reason":"stop","native_finish_reason":"stop","message":{"role":"assistant","content":"Hello! How can I assist you today?","refusal":null,"reasoning":null}}],"usage":{"prompt_tokens":8,"completion_tokens":9,"total_tokens":17,"cost":0.0000066,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0.0000066,"upstream_inference_prompt_cost":0.0000012,"upstream_inference_completions_cost":0.0000054},"completion_tokens_details":{"reasoning_tokens":0,"image_tokens":0,"audio_tokens":0}}}
